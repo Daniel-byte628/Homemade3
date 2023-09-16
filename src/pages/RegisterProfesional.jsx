@@ -6,6 +6,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useNavigate, Link } from "react-router-dom";
+import NavigationBar from '../components/navigationBar';
 
 const RegisterProfesional = () => {
 
@@ -87,6 +88,8 @@ const RegisterProfesional = () => {
 
 
     return (
+        <div>
+            <NavigationBar />
         <div className="block mx-auto my-12 w-2/3 p-8 bg-white border border-gray-200 rounded-lg shadow-lg text-gray-800">
             <h1 className="text-3xl font-bold text-center">Registrar Profesional</h1>
 
@@ -180,6 +183,7 @@ const RegisterProfesional = () => {
 
             </form>
             <p className='text-center'>¿Ya te Registraste? <Link to={"/login"}>Login</Link></p>
+        </div>
         </div>
     );
 };
