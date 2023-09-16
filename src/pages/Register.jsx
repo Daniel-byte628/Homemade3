@@ -22,6 +22,20 @@ const Register = () => {
         const password = e.target[4].value;
         const correo = e.target[5].value;
 
+        if (!file) {
+            setError("Por favor seleccione un archivo.");
+            return; // Exit the function early
+        }
+        
+        const camposObligatorios = ['nombre', 'apellido', 'usuario', 'password', 'correo'];
+        
+        for (const campo of camposObligatorios) {
+            if (!eval(campo)) {
+                setError(`El campo '${campo.charAt(0).toUpperCase() + campo.slice(1)}' es obligatorio.`);
+                return;
+            }
+        }
+
         try {
             const res = await createUserWithEmailAndPassword(auth, correo, password);
 
