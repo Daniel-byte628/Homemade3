@@ -1,0 +1,182 @@
+import React, { useState } from 'react'; // Importa useState desde React
+import Add from '../img/addimage.png';
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth, storage } from "../firebase";
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../firebase";
+import { useNavigate, Link } from "react-router-dom";
+
+const RegisterProfesional = () => {
+
+    const [error, setError] = useState(null);
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const file = e.target[0].files[0];
+        const nombre = e.target[1].value;
+        const apellido = e.target[2].value;
+        const usuario = e.target[3].value;
+        const password = e.target[4].value;
+        const correo = e.target[5].value;
+        const direccion = e.target[6].value;
+        const categoria = e.target[7].value;
+        const empresa = e.target[8].value;
+
+        if (!file) {
+            setError("Por favor seleccione un archivo.");
+            return; // Exit the function early
+        }
+        if (!nombre || !apellido || !usuario || !password || !correo || !direccion || !categoria) {
+            setError("Por favor, completa todos los campos obligatorios.");
+            return;
+        }
+
+        try {
+            const res = await createUserWithEmailAndPassword(auth, correo, password);
+
+            const storageObjectName = `${res.user.uid}_${Date.now()}_${nombre}`;
+            const storageRef = ref(storage, storageObjectName);
+
+
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on(
+                (error) => {
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                    setError(errorMessage);
+                },
+                () => {
+                    getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
+                        await updateProfile(res.user, {
+                            displayName: nombre,
+                            photoURL: downloadURL
+                        });
+                        await setDoc(doc(db, "usersprofesional", res.user.uid), {
+                            uid: res.user.uid,
+                            nombre: nombre,
+                            apellido: apellido,
+                            usuario: usuario,
+                            correo: correo,
+                            photoURL: downloadURL,
+                            direccion: direccion,
+                            categoria: categoria,
+                            empresa: empresa
+                        });
+
+                        await setDoc(doc(db, "userChats", res.user.uid), {});
+                        navigate("/login");
+                    });
+                }
+            );
+        } catch (err) {
+            const errorCode = err.code;
+            const errorMessage = err.message;
+            setError(errorMessage);
+        }
+    }
+
+
+
+    return (
+        <div className="block mx-auto my-12 w-2/3 p-8 bg-white border border-gray-200 rounded-lg shadow-lg text-gray-800">
+            <h1 className="text-3xl font-bold text-center">Registrar Profesional</h1>
+
+            <form onSubmit={handleSubmit}>
+                <input style={{ display: 'none' }} type="file" id="file" name="file" />
+                <label htmlFor="file" className="block text-center">
+                    <img src={Add} alt="addImage" className='mx-auto w-32 h-32 cursor-pointer' />
+                    <span className='text-gray-500 mt-2'>Subir Imagen</span>
+                </label>
+
+                <input
+                    type="text"
+                    name="name"
+                    placeholder="Nombre"
+                    className="bg-gray-200 border border-gray-300 w-full text-lg placeholder-gray-600 p-2 my-2 focus:bg-white"
+
+                />
+
+                <input
+                    type="text"
+                    name="apellido"
+                    placeholder="Apellido"
+                    className="bg-gray-200 border border-gray-300 w-full text-lg placeholder-gray-600 p-2 my-2 focus:bg-white"
+
+                />
+
+                <input
+                    type="text"
+                    name="usuario"
+                    placeholder="Usuario"
+                    className="bg-gray-200 border border-gray-300 w-full text-lg placeholder-gray-600 p-2 my-2 focus:bg-white"
+
+                />
+
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    className="bg-gray-200 border border-gray-300 w-full text-lg placeholder-gray-600 p-2 my-2 focus:bg-white"
+
+                />
+
+                <input
+                    type="email"
+                    name="correo"
+                    placeholder="Correo"
+                    className="bg-gray-200 border border-gray-300 w-full text-lg placeholder-gray-600 p-2 my-2 focus:bg-white"
+                />
+
+<input
+                    type="text"
+                    name="direccion"
+                    placeholder="Direccion"
+                    className="bg-gray-200 border border-gray-300 w-full text-lg placeholder-gray-600 p-2 my-2 focus:bg-white"
+                    required
+                />
+
+                <select
+                    name="categoria"
+                    className="bg-gray-200 border border-gray-300 w-full text-lg p-2 my-2 focus:bg-white"
+                    required
+                >
+                    <option value="" disabled selected>Selecciona una Categoría</option>
+                    <option value="Tecnología">Tecnología</option>
+                    <option value="Construcción">Construcción</option>
+                    <option value="Inmobiliaria">Inmobiliaria</option>
+                </select>
+
+                <input
+                    type="text"
+                    name="empresa"
+                    placeholder="Empresa(opcional)"
+                    className="bg-gray-200 border border-gray-300 w-full text-lg placeholder-gray-600 p-2 my-2 focus:bg-white"
+                />
+
+                <button
+                    type="submit"
+                    className="rounded-md bg-red-500 hover:bg-red-400 w-full text-lg text-white font-semibold py-2 my-3"
+                >
+                    Registrarse
+                </button>
+                <button
+                    onClick={() => navigate("/Register")} // Use navigate to navigate
+                    className="rounded-md bg-red-500 hover:bg-red-400 w-full text-lg text-white font-semibold py-2 my-3"
+                >
+                    Registrar Usuario
+                </button>
+
+                {error && <p className="text-red-500 font-bold text-lg my-3">* {error}</p>}
+
+
+            </form>
+            <p className='text-center'>¿Ya te Registraste? <Link to={"/login"}>Login</Link></p>
+        </div>
+    );
+};
+
+
+export default RegisterProfesional
