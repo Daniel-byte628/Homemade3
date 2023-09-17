@@ -3,14 +3,20 @@ import {
   query,
   where,
   getDocs,
+  setDoc,
+  doc,
+  updateDoc,
+  serverTimestamp,
+  getDoc,
 } from "firebase/firestore";
 import React, { useContext, useState } from "react";
 import { db } from "../firebase";
 import { AuthContext } from "../context/authContext";
 
-const Search = () => {
+const search = () => {
+
   const [username, setUsername] = useState("");
-  const [users, setUsers] = useState([]);
+  const [user, setUser] = useState(null);
   const [err, setErr] = useState(false);
 
   const { currentUser } = useContext(AuthContext);
@@ -23,52 +29,69 @@ const Search = () => {
 
     try {
       const querySnapshot = await getDocs(q);
-      const foundUsers = [];
-
       querySnapshot.forEach((doc) => {
-        foundUsers.push(doc.data());
+        setUser(doc.data());
       });
-
-      setUsers(foundUsers);
-      setErr(false); // Reset the error state
     } catch (err) {
-      setUsers([]); // Clear the users array in case of an error
       setErr(true);
     }
   };
 
   const handleKey = (e) => {
-    if (e.code === "Enter") {
-      handleSearch();
-    }
+    e.code === "Enter" && handleSearch();
   };
 
-  const handleSelect = async (selectedUser) => {
-    // Your code to handle user selection goes here
-  };
+  const handleSelect = async () => {
+    //check whether the group(chats in firestore) exists, if not create
+    const combinedId =
+      currentUser.uid > user.uid
+        ? currentUser.uid + user.uid
+        : user.uid + currentUser.uid;
+    try {
+      const res = await getDoc(doc(db, "chats", combinedId));
 
+      if (!res.exists()) {
+        //create a chat in chats collection
+        await setDoc(doc(db, "chats", combinedId), { messages: [] });
+
+        //create user chats
+        await updateDoc(doc(db, "userChats", currentUser.uid), {
+          [combinedId + ".userInfo"]: {
+            uid: user.uid,
+            nombre: user.nombre,
+            photoURL: user.photoURL,
+          },
+          [combinedId + ".date"]: serverTimestamp(),
+        });
+
+        await updateDoc(doc(db, "userChats", user.uid), {
+          [combinedId + ".userInfo"]: {
+            uid: currentUser.uid,
+            nombre: currentUser.nombre,
+            photoURL: currentUser.photoURL,
+          },
+          [combinedId + ".date"]: serverTimestamp(),
+        });
+      }
+    } catch (err) {  console.error("Firebase Error:", err);}
+
+    setUser(null);
+    setUsername("")
+  };
   return (
     <div className="search">
       <div className="searchForm">
-        <input
-          type="text"
-          placeholder="Search..."
-          onKeyDown={handleKey}
-          onChange={(e) => setUsername(e.target.value)}
-          value={username}
-        />
+        <input type="text" placeholder="Search..." onKeyDown={handleKey} onChange={(e) => setUsername(e.target.value)} value={username}/>
       </div>
       {err && <span>User no encontrado!</span>}
-      {users.map((user) => (
-        <div className="userChat" key={user.uid} onClick={() => handleSelect(user)}>
-          <img src={user.photoURL} alt="" />
-          <div className="userChatInfo">
-            <span>{user.nombre}</span>
-          </div>
+      {user && <div className="userChat" onClick={handleSelect}>
+        <img src={user.photoURL} alt="" />
+        <div className="userChatInfo">
+          <span>{user.nombre}</span>
         </div>
-      ))}
+      </div>}
     </div>
-  );
-};
+  )
+}
 
-export default Search;
+export default search
